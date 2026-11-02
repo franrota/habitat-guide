@@ -1,5 +1,5 @@
 /* Offline manager for the field-guide app: language choice, service worker, photo download (no update checks: the app is frozen once installed).
-   450c19fc84 and 360×270 are filled in by guide/build/pwa.py. */
+   53a6700a8e and 360×270 are filled in by guide/build/pwa.py. */
 const APPSTR={
 en:{appName:'Field guide app',offTitle:'Offline use',
  stReady:'Ready for offline use',stDown:(a,t)=>`Downloading photos for offline use… ${a} of ${t}`,stMissing:n=>`${n} photos are not on this device yet.`,
@@ -12,7 +12,7 @@ en:{appName:'Field guide app',offTitle:'Offline use',
  credTitle:'Photo credits and licences',credIntro:'Every species photo is an observation record published on GBIF (mostly from iNaturalist), used under the Creative Commons licence chosen by its author. Author, licence and a link to the original record are listed below and shown on each photo.',
  credMod:'Changes: photos were cropped and resized to 360×270 pixels and recompressed as WebP for offline use. Resized versions of CC BY-SA and CC BY-NC-SA photos are shared under the same licence. Photos under an NC licence may not be used commercially; CC0 photos are in the public domain.',
  fontsTitle:'Fonts',fontsText:'Figtree, Spectral and IBM Plex Mono, under the SIL Open Font License 1.1 (licence texts in the fonts folder of the app).',
- version:'Version',loadErr:'The guide could not be loaded. Connect to the internet once and reload.',appBtn:'Offline status and photo credits'},
+ version:'Version',loadErr:'The guide could not be loaded. Connect to the internet once and reload.',appBtn:'Offline status and photo credits',back:'Back'},
 it:{appName:'App della guida',offTitle:'Uso offline',
  stReady:'Pronta per l\'uso offline',stDown:(a,t)=>`Scaricamento delle foto per l'uso offline… ${a} di ${t}`,stMissing:n=>`${n} foto non sono ancora su questo dispositivo.`,
  stNoSW:'Questo browser non può salvare la guida per l\'uso offline.',stErr:'Lo scaricamento delle foto si è interrotto (manca la connessione?). Riprende da solo quando sei online, oppure tocca “Scarica le foto”.',
@@ -24,7 +24,7 @@ it:{appName:'App della guida',offTitle:'Uso offline',
  credTitle:'Crediti e licenze delle foto',credIntro:'Ogni foto di specie è un\'osservazione pubblicata su GBIF (per lo più da iNaturalist) e usata secondo la licenza Creative Commons scelta dall\'autore. Autore, licenza e collegamento all\'osservazione originale sono elencati qui sotto e indicati su ogni foto.',
  credMod:'Modifiche: le foto sono state ritagliate e ridimensionate a 360×270 pixel e ricompresse in WebP per l\'uso offline. Le versioni ridimensionate di foto CC BY-SA e CC BY-NC-SA sono condivise con la stessa licenza. Le foto con licenza NC non possono essere usate a fini commerciali; le foto CC0 sono di pubblico dominio.',
  fontsTitle:'Caratteri',fontsText:'Figtree, Spectral e IBM Plex Mono, con licenza SIL Open Font License 1.1 (testi della licenza nella cartella fonts dell\'app).',
- version:'Versione',loadErr:'Impossibile caricare la guida. Collegati una volta a internet e ricarica.',appBtn:'Stato offline e crediti delle foto'},
+ version:'Versione',loadErr:'Impossibile caricare la guida. Collegati una volta a internet e ricarica.',appBtn:'Stato offline e crediti delle foto',back:'Indietro'},
 de:{appName:'App zum Führer',offTitle:'Offline-Nutzung',
  stReady:'Bereit für die Offline-Nutzung',stDown:(a,t)=>`Fotos für die Offline-Nutzung werden geladen… ${a} von ${t}`,stMissing:n=>`${n} Fotos sind noch nicht auf diesem Gerät.`,
  stNoSW:'Dieser Browser kann den Führer nicht für die Offline-Nutzung speichern.',stErr:'Der Foto-Download wurde unterbrochen (keine Verbindung?). Er geht automatisch weiter, sobald du online bist, oder tippe auf „Fotos laden“.',
@@ -36,7 +36,7 @@ de:{appName:'App zum Führer',offTitle:'Offline-Nutzung',
  credTitle:'Fotonachweise und Lizenzen',credIntro:'Jedes Artfoto ist ein auf GBIF veröffentlichter Beobachtungsdatensatz (meist von iNaturalist) und wird gemäß der vom Urheber gewählten Creative-Commons-Lizenz verwendet. Urheber, Lizenz und ein Link zum Originaldatensatz stehen unten und auf jedem Foto.',
  credMod:'Änderungen: Die Fotos wurden für die Offline-Nutzung auf 360×270 Pixel zugeschnitten und verkleinert und als WebP neu komprimiert. Verkleinerte Fassungen von Fotos unter CC BY-SA und CC BY-NC-SA werden unter derselben Lizenz weitergegeben. Fotos mit NC-Lizenz dürfen nicht kommerziell genutzt werden; CC0-Fotos sind gemeinfrei.',
  fontsTitle:'Schriften',fontsText:'Figtree, Spectral und IBM Plex Mono, unter der SIL Open Font License 1.1 (Lizenztexte im Ordner fonts der App).',
- version:'Version',loadErr:'Der Führer konnte nicht geladen werden. Verbinde dich einmal mit dem Internet und lade neu.',appBtn:'Offline-Status und Fotonachweise'}
+ version:'Version',loadErr:'Der Führer konnte nicht geladen werden. Verbinde dich einmal mit dem Internet und lade neu.',appBtn:'Offline-Status und Fotonachweise',back:'Zurück'}
 };
 
 const LANGS=['en','it','de'];
@@ -48,7 +48,7 @@ function pickLang(){
 function setLang(l){ try{localStorage.setItem('sth-lang',l)}catch(e){} location.reload(); }
 
 const OFF={
-  version:'450c19fc84', state:'idle', have:0, total:0, usage:null, persisted:false,
+  version:'53a6700a8e', state:'idle', have:0, total:0, usage:null, persisted:false,
   ios:/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),
   standalone:matchMedia('(display-mode: standalone)').matches||navigator.standalone===true,
   reg:null, running:false,

@@ -303,15 +303,45 @@ function openSpecies(n){
   <a href="https://www.inaturalist.org/taxa/search?q=${q}" target="_blank" rel="noopener">iNaturalist</a></div></div></div>`;
   const d=$('#drawer'); d.innerHTML=h; d.hidden=false; $('#scrim').hidden=false; d.scrollTop=0; $('#drClose').focus(); hydrate(d);
 }
-function closeDrawer(){ $('#drawer').hidden=true; $('#scrim').hidden=true; if(lastFocus&&lastFocus.focus) lastFocus.focus(); }
+function closeDrawer(){ $('#drawer').hidden=true; if(!$('#index').classList.contains('open')) $('#scrim').hidden=true; if(lastFocus&&lastFocus.focus) lastFocus.focus(); }
 
-/* ---------- routing ---------- */
-function go(token,push){
-  closeIndex();
-  if(token.startsWith('s-')){const n=bySlug[token.slice(2)]; if(n){ if(!$('#main').innerHTML) render('lasen'); openSpecies(n);} return;}
-  closeDrawer(); render(token);
-  if(push!==false){ try{history.replaceState(null,'','#'+current)}catch(e){} }
+/* ---------- routing with history (offline app) ----------
+   Every view, the species panel and the open menu are history entries {v: view, sp: species slug, menu, y: scroll, d: depth},
+   so the phone's back gesture steps back through them; the back button in the header does the same. */
+const HS=()=>history.state||{v:current,d:0};
+function hPush(st,hash,y){ try{ history.replaceState(Object.assign({},HS(),{y:y==null?window.scrollY:y}),''); history.pushState(st,'','#'+hash); }catch(e){} }
+function hReplace(st,hash){ try{ history.replaceState(st,'','#'+hash); }catch(e){} }
+function go(token){
+  if(token.startsWith('s-')){ const n=bySlug[token.slice(2)]; if(n) showSpecies(n); return; }
+  const st=HS(), overlay=st.sp||st.menu, y=window.scrollY;
+  clearTimeout(window._yT); closeIndex(true); closeDrawer(); render(token);
+  const ns={v:current,d:overlay?st.d:(st.d||0)+1};
+  if(overlay) hReplace(ns,current); else hPush(ns,current,y);   // a menu or species panel is replaced, not stacked
+  backBtn();
 }
+function showSpecies(n){
+  if(!SP[n]) return;
+  const st=HS(), ns={v:current,sp:slug(n),d:(st.d||0)+(st.sp?0:1)};
+  if(st.sp||st.menu) hReplace(ns,'s-'+slug(n)); else hPush(ns,'s-'+slug(n));
+  closeIndex(true); openSpecies(n); backBtn();
+}
+function hideOverlay(){ const st=HS(); if((st.sp||st.menu)&&st.d>0) history.back(); else { closeDrawer(); closeIndex(true); if(st.sp||st.menu) hReplace({v:current,d:st.d||0},current); } }
+function parentOf(v){ return v.startsWith('h-')?'lasen': v.startsWith('c-')?(N[v.slice(2)].p?'c-'+N[v.slice(2)].p:'home'): v==='credits'?'app':'home'; }
+function goBack(){
+  const st=HS();
+  if(st.d>0){ history.back(); return; }
+  if(st.sp||st.menu){ hideOverlay(); return; }
+  const p=parentOf(current); closeDrawer(); closeIndex(true); render(p); hReplace({v:current,d:0},current); backBtn();
+}
+function backBtn(){ const top=current==='home'&&!HS().sp; $('#backBtn').hidden=top; document.querySelector('.top').classList.toggle('sub',!top); }
+window.addEventListener('popstate',e=>{
+  const st=e.state||{v:(location.hash.slice(1)||'home'),d:0};
+  if(!st.menu) closeIndex(true); else openIndex(true);
+  if(st.v!==current) { closeDrawer(); render(st.v); }
+  if(st.sp&&bySlug[st.sp]) openSpecies(bySlug[st.sp]); else if(!$('#drawer').hidden) closeDrawer();
+  if(!st.sp&&!st.menu) requestAnimationFrame(()=>window.scrollTo(0,st.y||0));
+  backBtn();
+});
 function render(token){
   current= token==='lasen'?'lasen' : token==='credits'?'credits' : token==='app'?'app' : token.startsWith('c-')&&N[token.slice(2)]?token : token.startsWith('h-')&&H[token.slice(2)]?token : 'home';
   $('#main').innerHTML= current==='home'?viewCLHome(): current==='lasen'?viewLAHome(): current==='credits'?viewCredits(): current==='app'?viewApp(): current.startsWith('c-')?viewNode(current.slice(2)):viewHab(current.slice(2));
@@ -319,7 +349,7 @@ function render(token){
   buildIndex();
   document.querySelectorAll('.ix').forEach(b=>b.classList.toggle('on',b.dataset.go===current));
   window.scrollTo(0,0);
-  const on=document.querySelector('.ix.on'); if(on) on.scrollIntoView({block:'nearest'});
+  const on=document.querySelector('.ix.on'), ix=$('#index'); if(on&&ix.offsetParent!==null&&getComputedStyle(ix).position!=='fixed') on.scrollIntoView({block:'nearest'});
   try{localStorage.setItem('sth-last',current)}catch(e){}
   if(current==='app') OFF.paint();
 }
@@ -353,19 +383,26 @@ $('#q').addEventListener('keydown',e=>{
   if(e.key==='Escape'){$('#results').hidden=true}
 });
 document.addEventListener('click',e=>{
-  if(e.target.id==='drClose'){closeDrawer();return}
+  if(e.target.closest('#drClose')){hideOverlay();return}
+  if(e.target.closest('#backBtn')){goBack();return}
   const lb=e.target.closest('[data-lang]'); if(lb){ setLang(lb.dataset.lang); return; }
   const ab=e.target.closest('[data-app]'); if(ab){ appAction(ab.dataset.app); return; }
   const sp=e.target.closest('[data-sp]'), gt=e.target.closest('[data-go]');
   if(!e.target.closest('.search')) $('#results').hidden=true;
-  if(sp){ $('#results').hidden=true; openSpecies(bySlug[sp.dataset.sp]); return;}
-  if(gt){ $('#results').hidden=true; $('#q').value=''; go(gt.dataset.go); return;}
+  if(sp){ $('#results').hidden=true; $('#q').blur(); showSpecies(bySlug[sp.dataset.sp]); return;}
+  if(gt){ $('#results').hidden=true; $('#q').value=''; $('#q').blur(); go(gt.dataset.go); return;}
 });
-$('#scrim').addEventListener('click',()=>{closeDrawer();closeIndex()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeIndex()}});
+$('#scrim').addEventListener('click',hideOverlay);
+document.addEventListener('keydown',e=>{if(e.key==='Escape') hideOverlay();});
 $('#brand').addEventListener('click',e=>{e.preventDefault();go('home')});
 function closeIndex(){ $('#index').classList.remove('open'); $('#menuBtn').setAttribute('aria-expanded','false'); if($('#drawer').hidden) $('#scrim').hidden=true; }
-$('#menuBtn').addEventListener('click',()=>{const o=$('#index').classList.toggle('open');$('#menuBtn').setAttribute('aria-expanded',String(o));$('#scrim').hidden=!o;});
+function openIndex(){ $('#index').classList.add('open'); $('#menuBtn').setAttribute('aria-expanded','true'); $('#scrim').hidden=false; const on=$('#index .ix.on'); if(on) on.scrollIntoView({block:'center'}); }
+$('#menuBtn').addEventListener('click',()=>{
+  if($('#index').classList.contains('open')){ hideOverlay(); return; }
+  const st=HS(); if(st.sp){ closeDrawer(); hReplace({v:current,d:st.d},current); }
+  hPush({v:current,menu:true,d:(HS().d||0)+1},current); openIndex();
+});
+$('#backBtn').innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>${esc(U.back)}</span>`;
 document.addEventListener('error',e=>{const im=e.target; if(im.tagName==='IMG'){const ph=im.closest('.ph'); if(ph){ph.innerHTML=`<span class="pend">${esc(T.pending)}</span>`}}},true);
 
 /* ---------- credits and app views (offline version only) ---------- */
@@ -389,8 +426,15 @@ function viewApp(){
 }
 window.addEventListener('offline-state',()=>{ if(current==='app') OFF.paint(); OFF.dot(); });
 OFF.dot();
-let start=(location.hash||'').slice(1);
-if(!start){try{start=localStorage.getItem('sth-last')||'home'}catch(e){start='home'}}
-if(start.startsWith('s-')){render('lasen');go(start)} else render(start||'home');
-window.addEventListener('hashchange',()=>{const t=location.hash.slice(1); if(t) go(t,false)});
+const st0=history.state;
+if(st0&&st0.v){                                   // reload, e.g. after a language switch: same place, same history
+  render(st0.v); if(st0.sp&&bySlug[st0.sp]) openSpecies(bySlug[st0.sp]); else if(st0.menu) openIndex(); else requestAnimationFrame(()=>window.scrollTo(0,st0.y||0));
+} else {
+  let start=(location.hash||'').slice(1);
+  if(!start){try{start=localStorage.getItem('sth-last')||'home'}catch(e){start='home'}}
+  if(start.startsWith('s-')&&bySlug[start.slice(2)]){ render('lasen'); hReplace({v:current,d:0},current); showSpecies(bySlug[start.slice(2)]); }
+  else { render(start||'home'); hReplace({v:current,d:0},current); }
+}
+window.addEventListener('scroll',()=>{ clearTimeout(window._yT); window._yT=setTimeout(()=>{ const st=HS(); if(!st.sp&&!st.menu) try{history.replaceState(Object.assign({},st,{y:window.scrollY}),'')}catch(e){} },200); },{passive:true});
+backBtn();
 }
